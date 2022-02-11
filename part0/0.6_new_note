@@ -1,0 +1,4 @@
+browser->server: HTTP POST https://studies.cs.helsinki.fi/exampleapp/new_note_spa Payload: {content: "<>", date: "<>"}
+server->browser: STATUS 201 JSON {"message": "note created"} 
+
+Event Handler creates new note and pushes it to the list
