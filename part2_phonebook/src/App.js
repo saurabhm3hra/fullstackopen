@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import comms from "./services/Comms";
 
 const App = () => {
   const [persons, setPersons] = useState([]);
 
   useEffect(() => {
-    axios.get("http://localhost:3001/persons").then((response) => {
-      setPersons(response.data);
+    comms.getAll().then((response) => {
+      setPersons(response);
     });
   }, []);
 
@@ -14,23 +14,48 @@ const App = () => {
   const [newNumber, setNewNumber] = useState("");
   const [filter, setFilter] = useState("");
 
+  const handleClick = (id, name) => {
+    if (window.confirm(`Delete ${name} ?`)) {
+      comms.deleteId(id).then((response) => {
+        let personsNew = persons.filter((val) => val.id !== id);
+        setPersons(personsNew);
+      });
+    }
+  };
+
   const filteredPersons = persons.filter((person) =>
     person.name.toLowerCase().includes(filter.toLowerCase())
   );
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const idx = persons.findIndex((val) => val.name === newName);
-    if (idx !== -1) {
-      window.alert(`${newName} is already added to phonebook`);
+    const idxName = persons.findIndex((val) => val.name === newName);
+    if (idxName !== -1) {
+      if (
+        window.confirm(
+          `${newName} is already added to phonebook, replace the old number with a new one?`
+        )
+      ) {
+        comms.update(persons[idxName].id, {name: newName, number: newNumber}).then(
+          response => {
+            let personsNew = [...persons];
+            personsNew[idxName] = response;
+            setPersons(personsNew);
+          }
+        );
+      }
       return;
     }
-    setPersons([
-      ...persons,
-      { name: newName, number: newNumber, id: persons.length + 1 },
-    ]);
-    setNewName("");
-    setNewNumber("");
+    comms
+      .create({
+        name: newName,
+        number: newNumber,
+      })
+      .then((response) => {
+        setPersons(persons.concat(response));
+        setNewName("");
+        setNewNumber("");
+      });
   };
 
   return (
@@ -46,7 +71,7 @@ const App = () => {
         setNewNumber={setNewNumber}
       />
       <h3>Numbers</h3>
-      <Persons filteredPersons={filteredPersons} />
+      <Persons filteredPersons={filteredPersons} handleClick={handleClick} />
     </div>
   );
 };
@@ -93,11 +118,22 @@ const PersonForm = ({
   );
 };
 
-const Persons = ({ filteredPersons }) => {
+const Persons = ({ filteredPersons, handleClick }) => {
   const render = filteredPersons.map((person) => (
-    <div key={person.id}>{`${person.name} ${person.number}`}</div>
+    <div key={person.id}>
+      {`${person.name} ${person.number}`}
+      <DeleteButton
+        id={person.id}
+        name={person.name}
+        handleClick={handleClick}
+      />
+    </div>
   ));
   return render;
+};
+
+const DeleteButton = ({ id, name, handleClick }) => {
+  return <button onClick={() => handleClick(id, name)}>delete</button>;
 };
 
 export default App;
