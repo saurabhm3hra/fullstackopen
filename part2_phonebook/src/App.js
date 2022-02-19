@@ -13,13 +13,29 @@ const App = () => {
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [filter, setFilter] = useState("");
+  const [isMessageHidden, setMessageHidden] = useState(true);
+  const [isError, setError] = useState(false);
+  const [delName, setDelName] = useState("");
 
   const handleClick = (id, name) => {
     if (window.confirm(`Delete ${name} ?`)) {
-      comms.deleteId(id).then((response) => {
-        let personsNew = persons.filter((val) => val.id !== id);
-        setPersons(personsNew);
-      });
+      setDelName(name);
+      comms
+        .deleteId(id)
+        .then((response) => {
+          let personsNew = persons.filter((val) => val.id !== id);
+          setPersons(personsNew);
+        })
+        .catch((response) => {
+          setMessageHidden(false);
+          setError(true);
+          setPersons(persons.filter(val => val.name !== name));
+          setTimeout(() => {
+            setMessageHidden(true);
+            setError(false);
+            setDelName("");
+          }, 5000);
+        });
     }
   };
 
@@ -36,13 +52,13 @@ const App = () => {
           `${newName} is already added to phonebook, replace the old number with a new one?`
         )
       ) {
-        comms.update(persons[idxName].id, {name: newName, number: newNumber}).then(
-          response => {
+        comms
+          .update(persons[idxName].id, { name: newName, number: newNumber })
+          .then((response) => {
             let personsNew = [...persons];
             personsNew[idxName] = response;
             setPersons(personsNew);
-          }
-        );
+          });
       }
       return;
     }
@@ -53,14 +69,23 @@ const App = () => {
       })
       .then((response) => {
         setPersons(persons.concat(response));
-        setNewName("");
-        setNewNumber("");
+        setMessageHidden(false);
+        setTimeout(() => {
+          setMessageHidden(true);
+          setNewName("");
+          setNewNumber("");
+        }, 5000);
       });
   };
 
   return (
     <div>
       <h2>Phonebook</h2>
+      <Message
+        isHidden={isMessageHidden}
+        name={newName.length > 0 ? newName : delName}
+        isError={isError}
+      />
       <Filter filterValue={filter} setFilter={setFilter} />
       <h3>add a new</h3>
       <PersonForm
@@ -134,6 +159,28 @@ const Persons = ({ filteredPersons, handleClick }) => {
 
 const DeleteButton = ({ id, name, handleClick }) => {
   return <button onClick={() => handleClick(id, name)}>delete</button>;
+};
+
+const Message = ({ isHidden, name, isError }) => {
+  const style = {
+    color: isError ? "red" : "green",
+    background: "lightgrey",
+    fontSize: 20,
+    borderStyle: "solid",
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+  };
+
+  return isHidden ? (
+    <div></div>
+  ) : isError ? (
+    <div
+      style={style}
+    >{`Information of ${name} has alread been removed from the server`}</div>
+  ) : (
+    <div style={style}>{`Added ${name}`}</div>
+  );
 };
 
 export default App;
